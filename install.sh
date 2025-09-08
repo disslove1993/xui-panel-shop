@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =================================================================
-# Script Nasb Khodkar va Ta'amoli Panel Modiriat X-UI
+# Script Nasb Khodkar va Ta'amoli Panel Modiriat X-UI (Final Version)
 # =================================================================
 
 # --- Etela'at Sabet Proje ---
@@ -18,18 +18,17 @@ fi
 
 # --- Marhale 1: Daryaft Etela'at az Karbar ---
 echo "======================================================"
+echo "MAHDI HAJI MOHAMMADI YAZDI!"
 echo "Be script nasb panel khosh amadid!"
 echo "Lotfan be soalat zir pasokh dahid:"
 echo "======================================================"
 
-# Porsidan Nam Domain
 read -p "Lotfan nam domain khod ra vared konid (mesalan: example.com): " DOMAIN_NAME
 if [ -z "$DOMAIN_NAME" ]; then
     echo "Khata: Nam domain nemitavanad khali bashad."
     exit 1
 fi
 
-# Porsidan Email baraye Gavahi SSL
 read -p "Lotfan email khod ra baraye daryaft gavahi SSL vared konid: " SSL_EMAIL
 if [ -z "$SSL_EMAIL" ]; then
     echo "Khata: Email nemitavanad khali bashad."
@@ -43,12 +42,14 @@ sleep 3
 
 
 # Marhale 2: Update Server va Nasb Pishniazha
-echo ">> 1. Update server va nasb pishniazha (nginx, python3, venv, certbot)..."
+echo ">> 1. Update server va nasb pishniazha..."
 apt-get update
 apt-get install -y nginx python3-pip python3-venv git certbot python3-certbot-nginx
 
 # Marhale 3: Clone Kardan Proje az GitHub
 echo ">> 2. Daryaft proje az GitHub..."
+# (پاک کردن پوشه قدیمی در صورت وجود برای نصب مجدد تمیز)
+rm -rf ${INSTALL_PATH}/${PROJECT_NAME}
 cd $INSTALL_PATH || exit
 git clone $GIT_REPO $PROJECT_NAME
 cd $PROJECT_NAME || exit
@@ -79,23 +80,12 @@ ExecStart=${INSTALL_PATH}/${PROJECT_NAME}/venv/bin/gunicorn --workers 3 --bind u
 WantedBy=multi-user.target
 EOF
 
-# Marhale 6: Sakht Config Nginx
-echo ">> 5. Sakht config Nginx baraye domain ${DOMAIN_NAME}..."
+# Marhale 6: Sakht Config Nginx (نسخه اصلاح شده)
+echo ">> 5. Sakht config sade Nginx baraye domain ${DOMAIN_NAME}..."
 cat > /etc/nginx/sites-available/${PROJECT_NAME} << EOF
 server {
     listen 80;
     server_name ${DOMAIN_NAME} www.${DOMAIN_NAME};
-
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl;
-    server_name ${DOMAIN_NAME} www.${DOMAIN_NAME};
-
-    # Masir gavahi-haye SSL ba'dan tavasot Certbot tanzim mishavad
 
     location / {
         include proxy_params;
@@ -105,15 +95,16 @@ server {
 EOF
 
 # Fa'al sazi Config Nginx
-ln -s /etc/nginx/sites-available/${PROJECT_NAME} /etc/nginx/sites-enabled/
+# (پاک کردن لینک‌های قدیمی برای جلوگیری از تداخل)
 rm -f /etc/nginx/sites-enabled/default
+rm -f /etc/nginx/sites-enabled/${PROJECT_NAME}
+ln -s /etc/nginx/sites-available/${PROJECT_NAME} /etc/nginx/sites-enabled/
 
 # Marhale 7: Rah'andazi Avalie Database
 echo ">> 6. Rah'andazi avalie database..."
 cd ${INSTALL_PATH}/${PROJECT_NAME}
 ./venv/bin/python3 init_db.py
 
-# Taghir malekiat file-ha be karbar web-server
 chown -R www-data:www-data ${INSTALL_PATH}/${PROJECT_NAME}
 
 # Marhale 8: Fa'al sazi va Ejraye Service-ha
@@ -124,7 +115,7 @@ systemctl enable ${PROJECT_NAME}
 systemctl restart nginx
 
 # Marhale 9: Daryaft Gavahi SSL ba Certbot
-echo ">> 8. Daryaft gavahi SSL baraye domain..."
+echo ">> 8. Daryaft gavahi SSL va tanzim khodkar HTTPS..."
 certbot --nginx -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} --non-interactive --agree-tos -m ${SSL_EMAIL} --redirect
 
 # Rah'andazi mojadad Nginx baraye e'mal tanzimat SSL
