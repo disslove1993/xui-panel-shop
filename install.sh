@@ -6,7 +6,7 @@
 
 # --- اطلاعات را اینجا ویرایش کنید ---
 # آدرس کامل ریپازیتوری گیت‌هاب شما
-GIT_REPO="https://github.com/fatemehbidel710-beep/x-ui.git"
+GIT_REPO="https://github.com/disslove1993/xui-panel-shop.git"
 
 # نام دامنه‌ای که می‌خواهید روی سرور تنظیم شود
 DOMAIN_NAME="baharak.sbs"
