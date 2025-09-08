@@ -1,55 +1,68 @@
 #!/bin/bash
 
 # =================================================================
-# اسکریپت نصب خودکار پنل مدیریت X-UI
+# Script Nasb Khodkar va Ta'amoli Panel Modiriat X-UI
 # =================================================================
 
-# --- اطلاعات را اینجا ویرایش کنید ---
-# آدرس کامل ریپازیتوری گیت‌هاب شما
+# --- Etela'at Sabet Proje ---
 GIT_REPO="https://github.com/disslove1993/xui-panel-shop.git"
-
-# نام دامنه‌ای که می‌خواهید روی سرور تنظیم شود
-DOMAIN_NAME="baharak.sbs"
-
-# ایمیلی که برای دریافت گواهی SSL استفاده می‌شود
-SSL_EMAIL="your_email@example.com"
-
-# نام پروژه (نام پوشه‌ای که ساخته می‌شود)
 PROJECT_NAME="xui_panel"
-
-# مسیری که پروژه در آن نصب می‌شود
 INSTALL_PATH="/var/www"
-# ------------------------------------
+# -------------------------
 
-# اطمینان از اینکه اسکریپت با دسترسی روت اجرا می‌شود
+# Etminan az inke script ba dastresi root ejra mishavad
 if [ "$EUID" -ne 0 ]; then
-  echo "لطفاً این اسکریپت را با دسترسی روت (sudo) اجرا کنید."
+  echo "Lotfan in script ra ba dastresi root (sudo) ejra konid."
   exit 1
 fi
 
-echo ">> شروع فرآیند نصب..."
+# --- Marhale 1: Daryaft Etela'at az Karbar ---
+echo "======================================================"
+echo "Be script nasb panel khosh amadid!"
+echo "Lotfan be soalat zir pasokh dahid:"
+echo "======================================================"
 
-# مرحله ۱: آپدیت سرور و نصب پیش‌نیازها
-echo ">> ۱. آپدیت سرور و نصب پیش‌نیازها (nginx, python3, venv, certbot)..."
+# Porsidan Nam Domain
+read -p "Lotfan nam domain khod ra vared konid (mesalan: example.com): " DOMAIN_NAME
+if [ -z "$DOMAIN_NAME" ]; then
+    echo "Khata: Nam domain nemitavanad khali bashad."
+    exit 1
+fi
+
+# Porsidan Email baraye Gavahi SSL
+read -p "Lotfan email khod ra baraye daryaft gavahi SSL vared konid: " SSL_EMAIL
+if [ -z "$SSL_EMAIL" ]; then
+    echo "Khata: Email nemitavanad khali bashad."
+    exit 1
+fi
+
+echo "======================================================"
+echo ">> Nasb ba domain ${DOMAIN_NAME} va email ${SSL_EMAIL} shoroo mishavad..."
+echo "======================================================"
+sleep 3
+
+
+# Marhale 2: Update Server va Nasb Pishniazha
+echo ">> 1. Update server va nasb pishniazha (nginx, python3, venv, certbot)..."
 apt-get update
 apt-get install -y nginx python3-pip python3-venv git certbot python3-certbot-nginx
 
-# مرحله ۲: کلون کردن پروژه از گیت‌هاب
-echo ">> ۲. دریافت پروژه از گیت‌هاب..."
-cd $INSTALL_PATH
+# Marhale 3: Clone Kardan Proje az GitHub
+echo ">> 2. Daryaft proje az GitHub..."
+cd $INSTALL_PATH || exit
 git clone $GIT_REPO $PROJECT_NAME
-cd $PROJECT_NAME
+cd $PROJECT_NAME || exit
 
-# مرحله ۳: ساخت محیط مجازی پایتون و نصب پکیج‌ها
-echo ">> ۳. ساخت محیط مجازی و نصب پکیج‌های پایتون..."
+# Marhale 4: Sakht Mohit Majazi Python va Nasb Package-ha
+echo ">> 3. Sakht mohit majazi va nasb package-haye Python..."
 python3 -m venv venv
 source venv/bin/activate
 pip install wheel
 pip install -r requirements.txt
 deactivate
 
-# مرحله ۴: ساخت سرویس Gunicorn با systemd
-echo ">> ۴. ساخت سرویس Gunicorn برای اجرای خودکار برنامه..."
+# Marhale 5: Sakht Service Gunicorn ba systemd
+echo ">> 4. Sakht service Gunicorn baraye ejraye khodkar barname..."
 cat > /etc/systemd/system/${PROJECT_NAME}.service << EOF
 [Unit]
 Description=Gunicorn instance to serve ${PROJECT_NAME}
@@ -66,8 +79,8 @@ ExecStart=${INSTALL_PATH}/${PROJECT_NAME}/venv/bin/gunicorn --workers 3 --bind u
 WantedBy=multi-user.target
 EOF
 
-# مرحله ۵: ساخت کانفیگ Nginx
-echo ">> ۵. ساخت کانفیگ Nginx برای دامنه ${DOMAIN_NAME}..."
+# Marhale 6: Sakht Config Nginx
+echo ">> 5. Sakht config Nginx baraye domain ${DOMAIN_NAME}..."
 cat > /etc/nginx/sites-available/${PROJECT_NAME} << EOF
 server {
     listen 80;
@@ -82,9 +95,7 @@ server {
     listen 443 ssl;
     server_name ${DOMAIN_NAME} www.${DOMAIN_NAME};
 
-    # مسیر گواهی‌های SSL بعداً توسط Certbot تنظیم می‌شود
-    # ssl_certificate ...
-    # ssl_certificate_key ...
+    # Masir gavahi-haye SSL ba'dan tavasot Certbot tanzim mishavad
 
     location / {
         include proxy_params;
@@ -93,35 +104,35 @@ server {
 }
 EOF
 
-# فعال‌سازی کانفیگ Nginx
+# Fa'al sazi Config Nginx
 ln -s /etc/nginx/sites-available/${PROJECT_NAME} /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default
 
-# مرحله ۶: راه‌اندازی اولیه دیتابیس
-echo ">> ۶. راه‌اندازی اولیه دیتابیس..."
+# Marhale 7: Rah'andazi Avalie Database
+echo ">> 6. Rah'andazi avalie database..."
 cd ${INSTALL_PATH}/${PROJECT_NAME}
 ./venv/bin/python3 init_db.py
 
-# تغییر مالکیت فایل‌ها به کاربر وب‌سرور
+# Taghir malekiat file-ha be karbar web-server
 chown -R www-data:www-data ${INSTALL_PATH}/${PROJECT_NAME}
 
-# مرحله ۷: فعال‌سازی و اجرای سرویس‌ها
-echo ">> ۷. فعال‌سازی و اجرای سرویس‌های Gunicorn و Nginx..."
+# Marhale 8: Fa'al sazi va Ejraye Service-ha
+echo ">> 7. Fa'al sazi va ejraye service-haye Gunicorn va Nginx..."
 systemctl daemon-reload
 systemctl start ${PROJECT_NAME}
 systemctl enable ${PROJECT_NAME}
 systemctl restart nginx
 
-# مرحله ۸: دریافت گواهی SSL با Certbot
-echo ">> ۸. دریافت گواهی SSL برای دامنه (ممکن است چند سوال پرسیده شود)..."
-certbot --nginx -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} --non-interactive --agree-tos -m ${SSL_EMAIL}
+# Marhale 9: Daryaft Gavahi SSL ba Certbot
+echo ">> 8. Daryaft gavahi SSL baraye domain..."
+certbot --nginx -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} --non-interactive --agree-tos -m ${SSL_EMAIL} --redirect
 
-# راه‌اندازی مجدد Nginx برای اعمال تنظیمات SSL
+# Rah'andazi mojadad Nginx baraye e'mal tanzimat SSL
 systemctl restart nginx
 
 echo "======================================================"
-echo ">> نصب با موفقیت به پایان رسید!"
-echo ">> وب‌سایت شما روی آدرس https://${DOMAIN_NAME} در دسترس است."
-echo ">> نام کاربری پیش‌فرض: admin"
-echo ">> رمز عبور پیش‌فرض: admin"
+echo ">> Nasb ba movafaghiat be payan resid!"
+echo ">> Website shoma rooye address https://${DOMAIN_NAME} dar dastres ast."
+echo ">> Nam karbari pishfarz: admin"
+echo ">> Ramz oboor pishfarz: admin"
 echo "======================================================"
