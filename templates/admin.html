@@ -1,0 +1,86 @@
+{% extends 'admin_base.html' %}
+{% block title %}داشبورد{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom border-secondary">
+    <h1 class="h2">داشبورد</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">کل کاربران</h5>
+                        <p class="card-text fs-2 fw-bold">{{ stats.total_users }}</p>
+                    </div>
+                    <i class="bi bi-people-fill fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">درآمد کل</h5>
+                        <p class="card-text fs-2 fw-bold">{{ "{:,.0f}".format(stats.total_income) }} <small class="fs-6">ریال</small></p>
+                    </div>
+                    <i class="bi bi-cash-stack fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">حجم کل فروخته شده</h5>
+                        <p class="card-text fs-2 fw-bold">{{ stats.total_gb_sold }} <small class="fs-6">GB</small></p>
+                    </div>
+                    <i class="bi bi-hdd-stack-fill fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="mt-4">مدیریت کاربران</h2>
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>نام کاربری</th>
+                        <th>نقش</th>
+                        <th>موجودی کیف پول (ریال)</th>
+                        <th style="width: 35%;">افزایش اعتبار (ریال)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td><span class="badge text-bg-{{'light' if user.role == 'admin' else 'secondary'}}">{{user.role}}</span></td>
+                        <td><strong>{{ "{:,.0f}".format(user.wallet) }}</strong></td>
+                        <td>
+                            {% if user.role != 'admin' %}
+                            <form action="{{ url_for('add_credit') }}" method="post" class="d-flex">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="number" name="amount" class="form-control form-control-sm me-2" placeholder="مبلغ به ریال" required>
+                                <button type="submit" class="btn btn-sm btn-success">شارژ</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

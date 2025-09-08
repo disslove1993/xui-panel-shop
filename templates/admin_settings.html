@@ -1,0 +1,118 @@
+{% extends 'admin_base.html' %}
+{% block title %}تنظیمات{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom border-secondary">
+    <h1 class="h2">تنظیمات پنل</h1>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body">
+                <form action="{{ url_for('admin_settings') }}" method="post">
+                    <h4 class="mb-3">تنظیمات اتصال به پنل X-UI</h4>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="xui_panel_url" class="form-label">آدرس پنل X-UI</label>
+                            <input type="text" class="form-control" id="xui_panel_url" name="setting_xui_panel_url" value="{{ settings.get('xui_panel_url', '') }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="xui_username" class="form-label">نام کاربری پنل</label>
+                            <input type="text" class="form-control" id="xui_username" name="setting_xui_username" value="{{ settings.get('xui_username', '') }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="xui_password" class="form-label">رمز عبور پنل</label>
+                            <input type="password" class="form-control" id="xui_password" name="setting_xui_password" value="{{ settings.get('xui_password', '') }}" required>
+                        </div>
+                    </div>
+                     <div class="d-flex align-items-center mb-4">
+                        <button type="button" class="btn btn-info ms-3" id="testConnectionBtn">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            تست اتصال پنل
+                        </button>
+                        <div id="testResult" class="flex-grow-1"></div>
+                    </div>
+
+
+                    <hr>
+                    <h4 class="mb-3 mt-4">تنظیمات کلی</h4>
+                    <div class="row">
+                         <div class="col-md-6 mb-3">
+                            <label for="server_address" class="form-label">آدرس سرور (برای کانفیگ)</label>
+                            <input type="text" class="form-control" name="setting_server_address" value="{{ settings.get('server_address', '') }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="subscription_domain" class="form-label">دامنه سابسکریپشن</label>
+                            <input type="text" class="form-control" name="setting_subscription_domain" value="{{ settings.get('subscription_domain', '') }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="price_per_gb" class="form-label">قیمت هر گیگ (به ریال)</label>
+                            <input type="number" class="form-control" name="setting_price_per_gb" value="{{ settings.get('price_per_gb', '') }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="zibal_merchant_code" class="form-label">مرچنت کد درگاه زیبال</label>
+                            <input type="text" class="form-control" name="setting_zibal_merchant_code" value="{{ settings.get('zibal_merchant_code', '') }}">
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h4 class="mb-3 mt-4">تغییر اطلاعات ادمین</h4>
+                     <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="admin_username" class="form-label">نام کاربری جدید ادمین</label>
+                            <input type="text" class="form-control" name="admin_username" placeholder="برای عدم تغییر، خالی بگذارید">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="admin_password" class="form-label">رمز عبور جدید ادمین</label>
+                            <input type="password" class="form-control" name="admin_password" placeholder="برای عدم تغییر، خالی بگذارید">
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">ذخیره تمام تنظیمات</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block admin_scripts %}
+<script>
+document.getElementById('testConnectionBtn').addEventListener('click', function() {
+    const btn = this;
+    const spinner = btn.querySelector('.spinner-border');
+    const resultDiv = document.getElementById('testResult');
+
+    const url = document.getElementById('xui_panel_url').value;
+    const username = document.getElementById('xui_username').value;
+    const password = document.getElementById('xui_password').value;
+
+    resultDiv.innerHTML = '';
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    fetch("{{ url_for('test_xui_connection') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: url, username: username, password: password })
+    })
+    .then(response => response.json())
+    .then(data => {
+        let alertClass = data.success ? 'alert-success' : 'alert-danger';
+        resultDiv.innerHTML = `<div class="alert ${alertClass} py-2 mb-0">${data.message}</div>`;
+    })
+    .catch(error => {
+        resultDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0">خطای کلاینت: ${error}</div>`;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}ساخت حساب کاربری جدید{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title text-center mb-4">ثبت نام</h3>
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">نام کاربری</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">رمز عبور</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success">ثبت نام</button>
+                    </div>
+                </form>
+                 <div class="text-center mt-3">
+                    <a href="{{ url_for('login') }}">قبلاً ثبت نام کرده‌اید؟ وارد شوید</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% block title %}داشبورد شما{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">داشبورد شما</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <span class="btn btn-sm btn-outline-success">موجودی: {{ "{:,.0f}".format(current_user.wallet) }} ریال</span>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- ستون اصلی برای ساخت کانفیگ -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h4 class="mb-0">ساخت کانفیگ جدید</h4>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('create_config') }}" method="post" id="createConfigForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">انتخاب اینباند:</label>
+                            <select class="form-select" name="inbound_id" required>
+                                <option selected disabled value="">یک اینباند را انتخاب کنید...</option>
+                                {% for inbound in inbounds %}
+                                <option value="{{ inbound.id }}">{{ inbound.remark }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                         <div class="col-md-6 mb-3">
+                            <label class="form-label">نام کانفیگ:</label>
+                            <input type="text" class="form-control" name="remark" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">حجم (GB):</label>
+                            <input type="number" class="form-control" name="traffic_gb" value="10" min="1" id="trafficInput" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">تاریخ انقضا (روز):</label>
+                            <input type="number" class="form-control" name="expire_days" value="30" min="1" required>
+                        </div>
+                    </div>
+                    <div class="alert alert-info" role="alert">
+                        هزینه نهایی: <strong id="costDisplay">0</strong> ریال
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">ساخت کانفیگ (نیازمند موجودی کیف پول)</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header"><h4 class="mb-0">لیست کانفیگ‌های شما</h4></div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>نام کانفیگ</th>
+                                <th>حجم مصرفی</th>
+                                <th>حجم کل</th>
+                                <th>تاریخ انقضا</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for config in configs %}
+                            <tr>
+                                <td>{{ config.remark }}</td>
+                                <td>{{ human_readable(config.up + config.down) }}</td>
+                                <td>{{ "نامحدود" if config.total == 0 else human_readable(config.total) }}</td>
+                                <td>{{ config.expiryTime | timestamp_to_datetime }}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#linksModal" data-bs-remark="{{ config.remark }}" data-bs-config-link="{{ config.config_link }}" data-bs-sub-link="{{ config.sub_link }}"><i class="bi bi-link-45deg"></i> لینک‌ها</button>
+                                        <form action="{{ url_for('delete_config', config_id=config.id) }}" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('آیا از حذف این کانفیگ مطمئن هستید؟');"><i class="bi bi-trash"></i> حذف</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">شما هنوز هیچ کانفیگی نساخته‌اید.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ستون کناری برای شارژ کیف پول و تاریخچه -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header"><h4 class="mb-0">شارژ کیف پول</h4></div>
+            <div class="card-body">
+                <form action="{{ url_for('create_payment') }}" method="post">
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">مبلغ شارژ (ریال):</label>
+                        <input type="number" class="form-control" name="amount" min="10000" placeholder="حداقل ۱۰,۰۰۰ ریال" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success">پرداخت از طریق درگاه</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header"><h4 class="mb-0">تاریخچه تراکنش‌ها</h4></div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    {% for tx in transactions|reverse %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong class="d-block">{{ "{:,.0f}".format(tx.amount) }} ریال</strong>
+                            <small class="text-muted">{{ tx.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </div>
+                        {% if tx.status == 'completed' %}
+                            <span class="badge bg-success">موفق</span>
+                        {% elif tx.status == 'failed' %}
+                            <span class="badge bg-danger">ناموفق</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">در انتظار</span>
+                        {% endif %}
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-center">هیچ تراکنشی وجود ندارد.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal برای لینک‌ها -->
+<div class="modal fade" id="linksModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">لینک‌های اتصال برای <strong id="modalClientRemarkLinks"></strong></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <ul class="nav nav-tabs" id="qrTab" role="tablist">
+              <li class="nav-item" role="presentation"><button class="nav-link active" id="config-tab" data-bs-toggle="tab" data-bs-target="#config-content">لینک کانفیگ</button></li>
+              <li class="nav-item" role="presentation"><button class="nav-link" id="sub-tab" data-bs-toggle="tab" data-bs-target="#sub-content">لینک سابسکریپشن</button></li>
+            </ul>
+            <div class="tab-content pt-3">
+              <div class="tab-pane fade show active" id="config-content">
+                <div class="row"><div class="col-md-8"><div class="input-group"><input type="text" class="form-control" id="modalConfigLink" readonly><button class="btn btn-outline-secondary copy-btn" data-clipboard-target="#modalConfigLink">کپی</button></div></div><div class="col-md-4 d-flex justify-content-center align-items-center mt-3 mt-md-0"><div id="qrcode-container-config" class="p-2 border rounded"></div></div></div>
+              </div>
+              <div class="tab-pane fade" id="sub-content">
+                <div class="row"><div class="col-md-8"><div class="input-group"><input type="text" class="form-control" id="modalSubLink" readonly><button class="btn btn-outline-secondary copy-btn" data-clipboard-target="#modalSubLink">کپی</button></div></div><div class="col-md-4 d-flex justify-content-center align-items-center mt-3 mt-md-0"><div id="qrcode-container-sub" class="p-2 border rounded"></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+    const trafficInput = document.getElementById('trafficInput');
+    const costDisplay = document.getElementById('costDisplay');
+    const pricePerGb = {{ price_per_gb|tojson }};
+
+    function calculateCost() {
+        const traffic = parseInt(trafficInput.value) || 0;
+        const cost = traffic * pricePerGb;
+        costDisplay.textContent = new Intl.NumberFormat('fa-IR').format(cost);
+    }
+
+    trafficInput.addEventListener('input', calculateCost);
+    // محاسبه هزینه اولیه در زمان بارگذاری صفحه
+    calculateCost();
+
+    var linksModal = document.getElementById('linksModal');
+    linksModal.addEventListener('show.bs.modal', function(e) {
+        var button = e.relatedTarget;
+        var remark = button.getAttribute('data-bs-remark');
+        var configLink = button.getAttribute('data-bs-config-link'); // No need to decode here
+        var subLink = button.getAttribute('data-bs-sub-link');
+        
+        document.getElementById('modalClientRemarkLinks').textContent = remark;
+        document.getElementById('modalConfigLink').value = configLink;
+        document.getElementById('modalSubLink').value = subLink;
+
+        document.getElementById('qrcode-container-config').innerHTML = '';
+        document.getElementById('qrcode-container-sub').innerHTML = '';
+        
+        new QRCode(document.getElementById('qrcode-container-config'), {
+            text: configLink, width: 150, height: 150,
+            correctLevel : QRCode.CorrectLevel.L
+        });
+        
+        new QRCode(document.getElementById('qrcode-container-sub'), {
+            text: subLink, width: 150, height: 150,
+            correctLevel : QRCode.CorrectLevel.L
+        });
+    });
+</script>
+{% endblock %}
+
